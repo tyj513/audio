@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手機相機存取與影像處理</title>
+    <script src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+    <style>
+        #videoInput,
+        #canvasOutput {
+            width: 100%;
+            /* 響應式設計 */
+        }
+    </style>
+</head>
+
+<body>
+    <h2>使用手機相機拍攝並即時處理</h2>
+    <video id="videoInput" playsinline autoplay></video>
+    <canvas id="canvasOutput"></canvas>
+    <button onclick="convertToGrayscale()">轉換成灰階</button>
+
+    <script>
+        function onOpenCvReady() {
+            cv.onRuntimeInitialized = () => {
+                console.log("OpenCV.js 已準備好");
+                startCamera();
+            };
+        }
+
+        function startCamera() {
+            let video = document.getElementById('videoInput');
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                    .then(function (stream) {
+                        video.srcObject = stream;
+                    })
+                    .catch(function (error) {
+                        console.log("Something went wrong!");
+                    });
+            }
+        }
+
+        function convertToGrayscale() {
+            let video = document.getElementById('videoInput');
+            let src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+            let dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+            let cap = new cv.VideoCapture(video);
+
+            const FPS = 30; // 設定幀率
+            function processVideo() {
+                try {
+                    if (!cv.running) {
+                        src.delete();
+                        dst.delete();
+                        return;
+                    }
+                    let begin = Date.now();
+                    // Start processing.
+                    cap.read(src);
+                    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+                    cv.imshow('canvasOutput', dst);
+                    // Schedule the next frame.
+                    let delay = 1000 / FPS - (Date.now() - begin);
+                    setTimeout(processVideo, delay);
+                } catch (err) {
+                    console.log(err);
+                }
+            }
+            // Start the processing loop
+            setTimeout(processVideo, 0);
+        }
+
+        onOpenCvReady();
+    </script>
+</body>
+
+</html>
